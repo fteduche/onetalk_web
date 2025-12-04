@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // Use a permissive policy so preview/proxy hosts (e.g. Render) can connect.
+        // For stricter security, replace 'all' with an array of allowed hostnames.
+        allowedHosts: true,
       },
       plugins: [react()],
       define: {
