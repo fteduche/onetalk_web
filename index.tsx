@@ -675,21 +675,6 @@ const styles = `
   .prose ul { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-sec); }
   .prose li { margin-bottom: 0.5rem; list-style-type: disc; }
   
-  .contact-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-  @media(min-width: 768px) {
-    .contact-grid { grid-template-columns: 1fr 1fr; }
-  }
-  .contact-info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 24px;
-  }
-  
   @media (max-width: 768px) {
     .hero-title { font-size: 40px; }
     .landing-nav { padding: 20px; }
@@ -729,7 +714,7 @@ const FEATURES = [
 ];
 
 // --- Types ---
-type View = 'home' | 'privacy' | 'terms' | 'contact';
+type View = 'home' | 'privacy' | 'terms';
 
 // --- Sub-Components ---
 
@@ -841,6 +826,7 @@ const HomeView = ({
                     <img src={ASSETS.sponsors.telegraph} alt="The Telegraph" className="sponsor-logo" />
                     <img src={ASSETS.sponsors.sunFm} alt="Sun FM" className="sponsor-logo" />
                     <img src={ASSETS.sponsors.oukDynasty} alt="OUK Dynasty" className="sponsor-logo" />
+                    <img src={ASSETS.sponsors.sportingSun} alt="Sporting Sun" className="sponsor-logo" />
                 </div>
             </section>
         </>
@@ -907,125 +893,6 @@ const TermsOfService = () => (
         <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.</p>
     </div>
 );
-
-const ContactPage = () => {
-    const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
-    const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setStatus('sending');
-        try {
-          // 1) If Firestore is configured, save to a contacts collection as before
-          if (db) {
-            await addDoc(collection(db, "contacts"), {
-              ...formData,
-              timestamp: serverTimestamp(),
-              targetEmail: "onetalk.biz@gmail.com"
-            });
-            console.log("Contact message saved to Firestore.");
-
-          // 2) If Formspree form id is provided (client-only, no backend), POST to Formspree
-          } else if (FORMSPREE_FORM_ID) {
-            const resp = await fetch(`https://formspree.io/f/${FORMSPREE_FORM_ID}`, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                name: formData.name,
-                email: formData.email,
-                subject: formData.subject,
-                message: formData.message
-              })
-            });
-
-            if (!resp.ok) {
-              const err = await resp.text();
-              throw new Error(`Formspree error: ${resp.status} ${err}`);
-            }
-
-            console.log('Formspree submission successful');
-
-          // 3) Otherwise, simulate for local dev (no keys)
-          } else {
-             await new Promise(resolve => setTimeout(resolve, 1500));
-             console.log("Simulating email send to onetalk.biz@gmail.com", formData);
-          }
-
-          setStatus('success');
-          setFormData({ name: '', email: '', subject: '', message: '' });
-          setTimeout(() => setStatus('idle'), 3000);
-        } catch (error) {
-          console.error("Error sending message:", error);
-          // Keep UX friendly but show an alert so developer knows when Formspree/Firestore failed
-          alert('There was an error sending your message. Please try again later.');
-          setStatus('idle');
-        }
-    };
-
-    return (
-        <div className="page-container">
-            <h1 className="text-4xl font-bold mb-4">Get in Touch</h1>
-            <p className="text-gray-400 mb-12 max-w-2xl">
-                Have questions about Onetalk? We're here to help. Send us a message and we'll respond as soon as possible.
-            </p>
-            
-            <div className="contact-grid">
-                <div>
-                    <h2 className="text-xl font-bold mb-6 text-white">Contact Information</h2>
-                    <div className="contact-info-item">
-                        <span className="text-primary font-bold">Email</span>
-                        <a href="mailto:onetalk.biz@gmail.com" className="text-gray-400 hover:text-white transition-colors">onetalk.biz@gmail.com</a>
-                    </div>
-                  
-                    
-                </div>
-
-                <div className="bg-gray-900 bg-opacity-40 p-8 rounded-2xl border border-gray-800">
-                    {status === 'success' ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4">
-                                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Message Sent!</h3>
-                            <p className="text-gray-400">We'll get back to you shortly.</p>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
-                                <input name="name" type="text" required className="text-input" placeholder="Your name" value={formData.name} onChange={handleChange} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
-                                <input name="email" type="email" required className="text-input" placeholder="your@email.com" value={formData.email} onChange={handleChange} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Subject</label>
-                                <input name="subject" type="text" required className="text-input" placeholder="How can we help?" value={formData.subject} onChange={handleChange} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Message</label>
-                                <textarea name="message" required className="textarea-input" placeholder="Tell us more..." value={formData.message} onChange={handleChange} />
-                            </div>
-                            <button type="submit" disabled={status === 'sending'} className="btn-hero-primary w-full mt-2">
-                                {status === 'sending' ? <Spinner /> : <><span className="mr-2">Send Message</span> <SendIcon className="w-4 h-4"/></>}
-                            </button>
-                        </form>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // --- Main App Component ---
 
@@ -1207,7 +1074,6 @@ function OnetalkApp() {
             
             {view === 'privacy' && <PrivacyPolicy />}
             {view === 'terms' && <TermsOfService />}
-            {view === 'contact' && <ContactPage />}
 
             <footer className="border-t border-gray-900 py-12 text-gray-500 mt-auto">
                 <div className="max-w-screen-xl mx-auto px-4 flex flex-col items-center justify-center text-center">
@@ -1215,7 +1081,6 @@ function OnetalkApp() {
                     <div className="footer-links">
                         <a onClick={() => navigate('privacy')} className={`hover:text-white cursor-pointer ${view === 'privacy' ? 'text-white' : ''}`}>Privacy Policy</a>
                         <a onClick={() => navigate('terms')} className={`hover:text-white cursor-pointer ${view === 'terms' ? 'text-white' : ''}`}>Terms of Service</a>
-                        <a onClick={() => navigate('contact')} className={`hover:text-white cursor-pointer ${view === 'contact' ? 'text-white' : ''}`}>Contact</a>
                     </div>
                 </div>
             </footer>

@@ -12,5 +12,6 @@ export const ASSETS = {
     telegraph: "../assets/the_telegraph.jpg",
     sunFm: "../assets/sun_fm.jfif",
     oukDynasty: "../assets/ouk.png",
+    sportingSun: "../assets/the_sun.png",
   },
 };
