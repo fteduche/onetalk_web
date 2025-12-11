@@ -9,9 +9,9 @@ export const ASSETS = {
   },
   sponsors: {
     sunNewspaper: "../assets/the_sun.png",
-    telegraph: "../assets/the_telegraph.jpg",
+    telegraph: "../assets/new_t.png",
     sunFm: "../assets/sun_fm.jfif",
     oukDynasty: "../assets/ouk.png",
-    sportingSun: "../assets/the_sun.png",
+    sportingSun: "../assets/s_sun.jpg",
   },
 };

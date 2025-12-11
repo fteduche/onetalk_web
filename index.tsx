@@ -3,18 +3,24 @@ import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { ASSETS } from "./assets";
+import AdminDashboard from "./AdminDashboard";
 
 // --- Firebase Configuration ---
-// TODO: Replace these values with your actual Firebase project configuration
+// Load Firebase config from environment variables for security
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyCpUOnfvYGWD-kP_MgUU5VcjGD5ZwhPUr8",
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "onetalk-c7121.firebaseapp.com",
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "onetalk-c7121",
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "onetalk-c7121.firebasestorage.app",
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "996418805484",
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:996418805484:web:7fe1de306e67979b794fc9"
 };
+
+// Admin credentials from environment variables
+const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "fteduche@gmail.com";
+const ADMIN_PASSWORD = (import.meta as any).env?.VITE_ADMIN_PASSWORD || "fredrick001";
 
 // Initialize Firebase safely
 let db = null;
@@ -31,6 +37,28 @@ try {
 
 // Optional: Formspree form ID (set this in a Vite env var: VITE_FORMSPREE_FORM_ID)
 const FORMSPREE_FORM_ID = (import.meta as any).env?.VITE_FORMSPREE_FORM_ID || '';
+
+// --- Security Helpers ---
+const sanitizeInput = (input: string): string => {
+  // Remove potential XSS vectors
+  return input
+    .replace(/[<>"']/g, '') // Remove common XSS characters
+    .trim()
+    .slice(0, 500); // Limit length to prevent DoS
+};
+
+const isValidName = (name: string): boolean => {
+  const sanitized = sanitizeInput(name);
+  return sanitized.length >= 2 && sanitized.length <= 100 && /^[a-zA-Z\s'-]+$/.test(sanitized);
+};
+
+const isStrongPassword = (password: string): boolean => {
+  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+  return password.length >= 8 && 
+         /[A-Z]/.test(password) && 
+         /[a-z]/.test(password) && 
+         /[0-9]/.test(password);
+};
 
 // --- Icons ---
 const ChevronDown = () => (
@@ -714,7 +742,7 @@ const FEATURES = [
 ];
 
 // --- Types ---
-type View = 'home' | 'privacy' | 'terms';
+type View = 'home' | 'privacy' | 'terms' | 'admin' | 'thankyou';
 
 // --- Sub-Components ---
 
@@ -894,6 +922,98 @@ const TermsOfService = () => (
     </div>
 );
 
+const ThankYouPage = ({ userName, onNavigateHome }: { userName: string; onNavigateHome: () => void }) => (
+    <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+    }}>
+        <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '24px',
+            padding: '60px 40px',
+            maxWidth: '600px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+        }}>
+            <div style={{
+                width: '80px',
+                height: '80px',
+                background: '#10b981',
+                borderRadius: '50%',
+                margin: '0 auto 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h1 style={{
+                fontSize: '2.5rem',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: '#111'
+            }}>Welcome to Onetalk{userName ? `, ${userName}` : ''}! 🎉</h1>
+            <p style={{
+                fontSize: '1.2rem',
+                color: '#555',
+                lineHeight: '1.8',
+                marginBottom: '32px'
+            }}>
+                You've successfully joined our waitlist! We're excited to have you as part of our community.
+                You'll be among the first to know when we launch.
+            </p>
+            <div style={{
+                background: '#f3f4f6',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '32px',
+                textAlign: 'left'
+            }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#111' }}>What's Next?</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <li style={{ padding: '8px 0', color: '#555', display: 'flex', alignItems: 'start' }}>
+                        <span style={{ marginRight: '8px' }}>✉️</span>
+                        <span>Check your email for a confirmation message</span>
+                    </li>
+                    <li style={{ padding: '8px 0', color: '#555', display: 'flex', alignItems: 'start' }}>
+                        <span style={{ marginRight: '8px' }}>🔔</span>
+                        <span>We'll notify you when Onetalk launches</span>
+                    </li>
+                    <li style={{ padding: '8px 0', color: '#555', display: 'flex', alignItems: 'start' }}>
+                        <span style={{ marginRight: '8px' }}>🚀</span>
+                        <span>Get early access to exclusive features</span>
+                    </li>
+                </ul>
+            </div>
+            <button
+                onClick={onNavigateHome}
+                style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '14px 32px',
+                    fontSize: '1.1rem',
+                    fontWeight: '600',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+                Return to Home
+            </button>
+        </div>
+    </div>
+);
+
 // --- Main App Component ---
 
 function OnetalkApp() {
@@ -906,9 +1026,17 @@ function OnetalkApp() {
     
     // Modal & Registration State
     const [showRegisterModal, setShowRegisterModal] = useState(false);
-    const [email, setEmail] = useState("");
-    const [emailError, setEmailError] = useState("");
+    const [registerForm, setRegisterForm] = useState({ fullName: "", email: "", password: "" });
+    const [formErrors, setFormErrors] = useState({ fullName: "", email: "", password: "" });
     const [isRegistering, setIsRegistering] = useState(false);
+    const [registrationAttempts, setRegistrationAttempts] = useState(0);
+    const [lastAttemptTime, setLastAttemptTime] = useState(0);
+    
+    // Admin Authentication State
+    const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+    const [adminLoginForm, setAdminLoginForm] = useState({ email: "", password: "" });
+    const [adminError, setAdminError] = useState("");
+    const [adminLoggingIn, setAdminLoggingIn] = useState(false);
     
     // Loading States
     const [videoLoaded, setVideoLoaded] = useState(false);
@@ -918,6 +1046,19 @@ function OnetalkApp() {
         const timer = setInterval(() => setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length), 5000);
         return () => clearInterval(timer);
     }, []);
+
+    // Check authentication state
+    useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user && view === 'admin') {
+                setIsAdminAuthenticated(true);
+            } else if (view === 'admin') {
+                setIsAdminAuthenticated(false);
+            }
+        });
+        return () => unsubscribe();
+    }, [view]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -959,6 +1100,14 @@ function OnetalkApp() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Check URL on mount for admin route
+    useEffect(() => {
+        const path = window.location.pathname;
+        if (path === '/admin') {
+            setView('admin');
+        }
+    }, []);
+
     const scrollToSection = (id: string) => {
         if (view !== 'home') {
             navigate('home');
@@ -996,48 +1145,170 @@ function OnetalkApp() {
             );
     };
 
-    const handleRegister = async () => {
+    const handleRegister = async (e) => {
+        e.preventDefault();
         if (isRegistering) return;
         
-        if (validateEmail(email)) {
-            setEmailError("");
-            setIsRegistering(true);
+        // Rate limiting: Max 5 attempts per 5 minutes
+        const now = Date.now();
+        if (registrationAttempts >= 5 && now - lastAttemptTime < 300000) {
+            alert("Too many registration attempts. Please try again in a few minutes.");
+            return;
+        }
+        
+        if (now - lastAttemptTime > 300000) {
+            setRegistrationAttempts(0);
+        }
+        
+        // Validate and sanitize all fields
+        const errors = { fullName: "", email: "", password: "" };
+        let hasError = false;
+        
+        const sanitizedName = sanitizeInput(registerForm.fullName);
+        const sanitizedEmail = sanitizeInput(registerForm.email);
 
-            try {
-              if (db) {
+        if (!sanitizedName || !isValidName(sanitizedName)) {
+            errors.fullName = "Please enter a valid name (2-100 characters, letters only)";
+            hasError = true;
+        }
+
+        if (!validateEmail(sanitizedEmail)) {
+            errors.email = "Please enter a valid email address";
+            hasError = true;
+        }
+
+        if (!isStrongPassword(registerForm.password)) {
+            errors.password = "Password must be 8+ characters with uppercase, lowercase, and numbers";
+            hasError = true;
+        }
+
+        setFormErrors(errors);
+        if (hasError) return;
+        
+        setRegistrationAttempts(prev => prev + 1);
+        setLastAttemptTime(now);
+
+        setIsRegistering(true);
+
+        try {
+            const auth = getAuth();
+            const sanitizedName = sanitizeInput(registerForm.fullName);
+            const sanitizedEmail = sanitizeInput(registerForm.email).toLowerCase();
+            
+            // Create user with Firebase Auth
+            const userCredential = await createUserWithEmailAndPassword(
+                auth,
+                sanitizedEmail,
+                registerForm.password
+            );
+
+            // Update user profile with full name
+            await updateProfile(userCredential.user, {
+                displayName: sanitizedName
+            });
+
+            // Also save to waitlist collection for admin tracking
+            if (db) {
                 await addDoc(collection(db, "waitlist"), {
-                  email: email,
-                  timestamp: serverTimestamp()
+                    fullName: sanitizedName,
+                    email: sanitizedEmail,
+                    userId: userCredential.user.uid,
+                    timestamp: serverTimestamp(),
+                    createdAt: new Date().toISOString()
                 });
-                console.log("Email added to Firestore waitlist");
-              } else {
-                 // Simulate for demo
-                 await new Promise(resolve => setTimeout(resolve, 1500));
-                 console.log("Simulating waitlist signup for:", email);
-              }
-
-              setIsRegistering(false);
-              setEmail("");
-              setShowRegisterModal(false);
-              alert("Thanks for registering! We will be in touch.");
-
-            } catch (error) {
-              console.error("Error adding to waitlist:", error);
-              // Graceful degradation for demo
-              setIsRegistering(false);
-              setEmail("");
-              setShowRegisterModal(false);
-              alert("Thanks for registering! We will be in touch.");
+                console.log("User registered and added to waitlist");
             }
             
-        } else {
-            setEmailError("Please enter a valid email address.");
+            // Reset rate limiting on success
+            setRegistrationAttempts(0);
+
+            setIsRegistering(false);
+            setRegisterForm({ fullName: "", email: "", password: "" });
+            setShowRegisterModal(false);
+            // Navigate to thank you page instead of showing alert
+            navigate('thankyou');
+
+        } catch (error: any) {
+            console.error("Error registering:", error);
+            setIsRegistering(false);
+            
+            // Handle Firebase Auth errors
+            if (error.code === 'auth/email-already-in-use') {
+                setFormErrors(prev => ({ ...prev, email: "This email is already registered" }));
+                alert("This email is already registered. Please use a different email or try logging in.");
+            } else if (error.code === 'auth/weak-password') {
+                setFormErrors(prev => ({ ...prev, password: "Password is too weak" }));
+            } else if (error.code === 'auth/invalid-email') {
+                setFormErrors(prev => ({ ...prev, email: "Invalid email format" }));
+            } else if (error.message?.includes('Missing or insufficient permissions')) {
+                // Firestore permissions error - Auth succeeded but waitlist save failed
+                // This is acceptable - user account is created
+                setRegisterForm({ fullName: "", email: "", password: "" });
+                setShowRegisterModal(false);
+                alert(`Welcome ${registerForm.fullName}! Your account has been created successfully.`);
+            } else {
+                alert("Registration failed: " + (error.message || "Please try again"));
+            }
         }
     };
 
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-        if (emailError) setEmailError("");
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setRegisterForm(prev => ({ ...prev, [name]: value }));
+        // Clear error for this field when user types
+        if (formErrors[name]) {
+            setFormErrors(prev => ({ ...prev, [name]: "" }));
+        }
+    };
+
+    const handleAdminLogin = async (e) => {
+        e.preventDefault();
+        if (adminLoggingIn) return;
+        
+        setAdminLoggingIn(true);
+        setAdminError("");
+
+        // Check if entered credentials match the admin credentials (from env vars)
+        const sanitizedEmail = sanitizeInput(adminLoginForm.email).toLowerCase();
+        if (sanitizedEmail !== ADMIN_EMAIL.toLowerCase() || adminLoginForm.password !== ADMIN_PASSWORD) {
+            setAdminError("Invalid email or password");
+            setAdminLoggingIn(false);
+            return;
+        }
+
+        try {
+            const auth = getAuth();
+            await signInWithEmailAndPassword(
+                auth,
+                adminLoginForm.email,
+                adminLoginForm.password
+            );
+            setIsAdminAuthenticated(true);
+            setAdminLoginForm({ email: "", password: "" });
+        } catch (error: any) {
+            console.error("Admin login error:", error);
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                setAdminError("Invalid admin credentials");
+            } else if (error.code === 'auth/invalid-email') {
+                setAdminError("Invalid email format");
+            } else {
+                setAdminError("Login failed. Please try again.");
+            }
+        } finally {
+            setAdminLoggingIn(false);
+        }
+    };
+
+    const handleAdminLogout = async () => {
+        try {
+            const auth = getAuth();
+            await signOut(auth);
+            setIsAdminAuthenticated(false);
+            setAdminLoginForm({ email: "", password: "" });
+            navigate('home');
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
     };
 
     return (
@@ -1074,16 +1345,137 @@ function OnetalkApp() {
             
             {view === 'privacy' && <PrivacyPolicy />}
             {view === 'terms' && <TermsOfService />}
-
-            <footer className="border-t border-gray-900 py-12 text-gray-500 mt-auto">
-                <div className="max-w-screen-xl mx-auto px-4 flex flex-col items-center justify-center text-center">
-                    <p>© 2025 Onetalk Inc. All rights reserved.</p>
-                    <div className="footer-links">
-                        <a onClick={() => navigate('privacy')} className={`hover:text-white cursor-pointer ${view === 'privacy' ? 'text-white' : ''}`}>Privacy Policy</a>
-                        <a onClick={() => navigate('terms')} className={`hover:text-white cursor-pointer ${view === 'terms' ? 'text-white' : ''}`}>Terms of Service</a>
+            {view === 'thankyou' && (
+                <ThankYouPage 
+                    userName={registerForm.fullName.split(' ')[0]} 
+                    onNavigateHome={() => navigate('home')} 
+                />
+            )}
+            {view === 'admin' && (
+                isAdminAuthenticated ? (
+                    <AdminDashboard db={db} onLogout={handleAdminLogout} />
+                ) : (
+                    <div style={{ 
+                        minHeight: "80vh", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        background: "#000" 
+                    }}>
+                        <div style={{
+                            background: "#111",
+                            border: "1px solid #333",
+                            borderRadius: "16px",
+                            padding: "40px",
+                            maxWidth: "400px",
+                            width: "90%"
+                        }}>
+                            <h2 style={{ 
+                                fontSize: "24px", 
+                                fontWeight: "bold", 
+                                marginBottom: "8px",
+                                color: "#fff" 
+                            }}>
+                                Admin Login
+                            </h2>
+                            <p style={{ color: "#888", marginBottom: "24px" }}>
+                                Sign in with your admin account to access the dashboard
+                            </p>
+                            <form onSubmit={handleAdminLogin}>
+                                <input
+                                    type="email"
+                                    placeholder="Email"
+                                    value={adminLoginForm.email}
+                                    onChange={(e) => setAdminLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                                    style={{
+                                        width: "100%",
+                                        background: "rgba(255,255,255,0.05)",
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        padding: "16px",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "16px",
+                                        marginBottom: "16px",
+                                        boxSizing: "border-box"
+                                    }}
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    value={adminLoginForm.password}
+                                    onChange={(e) => setAdminLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                                    style={{
+                                        width: "100%",
+                                        background: "rgba(255,255,255,0.05)",
+                                        border: adminError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.1)",
+                                        padding: "16px",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "16px",
+                                        marginBottom: "16px",
+                                        boxSizing: "border-box"
+                                    }}
+                                />
+                                {adminError && (
+                                    <p style={{ 
+                                        color: "#ef4444", 
+                                        fontSize: "14px", 
+                                        marginBottom: "16px" 
+                                    }}>
+                                        {adminError}
+                                    </p>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={adminLoggingIn}
+                                    style={{
+                                        width: "100%",
+                                        background: "#7C3AED",
+                                        color: "#fff",
+                                        padding: "16px",
+                                        borderRadius: "8px",
+                                        border: "none",
+                                        cursor: adminLoggingIn ? "wait" : "pointer",
+                                        fontWeight: "600",
+                                        fontSize: "16px",
+                                        opacity: adminLoggingIn ? 0.7 : 1
+                                    }}
+                                >
+                                    {adminLoggingIn ? "Signing in..." : "Login"}
+                                </button>
+                            </form>
+                            <button
+                                onClick={() => navigate('home')}
+                                style={{
+                                    width: "100%",
+                                    background: "transparent",
+                                    color: "#888",
+                                    padding: "12px",
+                                    borderRadius: "8px",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    marginTop: "12px",
+                                    fontSize: "14px"
+                                }}
+                            >
+                                ← Back to Home
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </footer>
+                )
+            )}
+
+            {view !== 'admin' && (
+                <footer className="border-t border-gray-900 py-12 text-gray-500 mt-auto">
+                    <div className="max-w-screen-xl mx-auto px-4 flex flex-col items-center justify-center text-center">
+                        <p>© 2025 Onetalk Inc. All rights reserved.</p>
+                        <div className="footer-links">
+                            <a onClick={() => navigate('privacy')} className={`hover:text-white cursor-pointer ${view === 'privacy' ? 'text-white' : ''}`}>Privacy Policy</a>
+                            <a onClick={() => navigate('terms')} className={`hover:text-white cursor-pointer ${view === 'terms' ? 'text-white' : ''}`}>Terms of Service</a>
+                        </div>
+                    </div>
+                </footer>
+            )}
             
             <button 
                 className={`back-to-top ${showBackToTop ? 'visible' : ''}`} 
@@ -1100,27 +1492,54 @@ function OnetalkApp() {
                         <button className="close-btn" onClick={() => setShowRegisterModal(false)}>
                             <XIcon />
                         </button>
-                        <h2 className="text-2xl font-bold mb-2 text-center">Join the Waitlist</h2>
+                        <h2 className="text-2xl font-bold mb-2 text-center">Create Your Account</h2>
                         <p className="text-gray-400 text-center mb-6">Be the first to experience Onetalk. Sign up for early access and exclusive creator rewards.</p>
                         
-                        <div className="email-input-group">
-                             <input 
-                                type="email" 
-                                placeholder="Enter your email address" 
-                                className={`email-input ${emailError ? 'error' : ''}`}
-                                value={email}
-                                onChange={handleEmailChange}
-                                disabled={isRegistering}
-                             />
+                        <form onSubmit={handleRegister} className="email-input-group">
+                             <div>
+                                 <input 
+                                    type="text"
+                                    name="fullName"
+                                    placeholder="Full Name" 
+                                    className={`email-input ${formErrors.fullName ? 'error' : ''}`}
+                                    value={registerForm.fullName}
+                                    onChange={handleFormChange}
+                                    disabled={isRegistering}
+                                 />
+                                 {formErrors.fullName && <div className="error-message">{formErrors.fullName}</div>}
+                             </div>
+                             <div>
+                                 <input 
+                                    type="email"
+                                    name="email"
+                                    placeholder="Email Address" 
+                                    className={`email-input ${formErrors.email ? 'error' : ''}`}
+                                    value={registerForm.email}
+                                    onChange={handleFormChange}
+                                    disabled={isRegistering}
+                                 />
+                                 {formErrors.email && <div className="error-message">{formErrors.email}</div>}
+                             </div>
+                             <div>
+                                 <input 
+                                    type="password"
+                                    name="password"
+                                    placeholder="Password (min 6 characters)" 
+                                    className={`email-input ${formErrors.password ? 'error' : ''}`}
+                                    value={registerForm.password}
+                                    onChange={handleFormChange}
+                                    disabled={isRegistering}
+                                 />
+                                 {formErrors.password && <div className="error-message">{formErrors.password}</div>}
+                             </div>
                              <button 
+                                type="submit"
                                 className="btn-hero-primary w-full" 
-                                onClick={handleRegister} 
                                 disabled={isRegistering}
                              >
-                                 {isRegistering ? <Spinner /> : "Join Now"}
+                                 {isRegistering ? <Spinner /> : "Create Account"}
                              </button>
-                         </div>
-                         {emailError && <div className="error-message">{emailError}</div>}
+                         </form>
                     </div>
                 </div>
             )}
