@@ -74,6 +74,20 @@ const XIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M18 6L6 18M6 6l12 12"/></svg>
 );
 
+const EyeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+);
+
 const Spinner = () => (
   <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1039,6 +1053,10 @@ function OnetalkApp() {
     const [adminError, setAdminError] = useState("");
     const [adminLoggingIn, setAdminLoggingIn] = useState(false);
     
+    // Password visibility state
+    const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+    const [showAdminPassword, setShowAdminPassword] = useState(false);
+    
     // Loading States
     const [videoLoaded, setVideoLoaded] = useState(false);
     const [featuresLoaded, setFeaturesLoaded] = useState(false);
@@ -1269,6 +1287,14 @@ function OnetalkApp() {
         setAdminLoggingIn(true);
         setAdminError("");
 
+        // Check if admin credentials are configured
+        if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+            setAdminError("Admin credentials not configured. Check environment variables.");
+            setAdminLoggingIn(false);
+            console.error("ADMIN_EMAIL or ADMIN_PASSWORD not set in environment variables");
+            return;
+        }
+
         // Check if entered credentials match the admin credentials (from env vars)
         const sanitizedEmail = sanitizeInput(adminLoginForm.email).toLowerCase();
         if (sanitizedEmail !== ADMIN_EMAIL.toLowerCase() || adminLoginForm.password !== ADMIN_PASSWORD) {
@@ -1400,23 +1426,46 @@ function OnetalkApp() {
                                         boxSizing: "border-box"
                                     }}
                                 />
-                                <input
-                                    type="password"
-                                    placeholder="Password"
-                                    value={adminLoginForm.password}
-                                    onChange={(e) => setAdminLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                                    style={{
-                                        width: "100%",
-                                        background: "rgba(255,255,255,0.05)",
-                                        border: adminError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.1)",
-                                        padding: "16px",
-                                        borderRadius: "8px",
-                                        color: "#fff",
-                                        fontSize: "16px",
-                                        marginBottom: "16px",
-                                        boxSizing: "border-box"
-                                    }}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showAdminPassword ? "text" : "password"}
+                                        placeholder="Password"
+                                        value={adminLoginForm.password}
+                                        onChange={(e) => setAdminLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                                        style={{
+                                            width: "100%",
+                                            background: "rgba(255,255,255,0.05)",
+                                            border: adminError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.1)",
+                                            padding: "16px",
+                                            paddingRight: "45px",
+                                            borderRadius: "8px",
+                                            color: "#fff",
+                                            fontSize: "16px",
+                                            marginBottom: "16px",
+                                            boxSizing: "border-box"
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            color: '#999'
+                                        }}
+                                        aria-label={showAdminPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                    </button>
+                                </div>
                                 {adminError && (
                                     <p style={{ 
                                         color: "#ef4444", 
@@ -1521,16 +1570,39 @@ function OnetalkApp() {
                                  />
                                  {formErrors.email && <div className="error-message">{formErrors.email}</div>}
                              </div>
-                             <div>
+                             <div style={{ position: 'relative' }}>
                                  <input 
-                                    type="password"
+
+                                    type={showRegisterPassword ? "text" : "password"}
                                     name="password"
-                                    placeholder="Password (min 6 characters)" 
+                                    placeholder="Password (min 8 characters)" 
                                     className={`email-input ${formErrors.password ? 'error' : ''}`}
                                     value={registerForm.password}
                                     onChange={handleFormChange}
                                     disabled={isRegistering}
+                                    style={{ paddingRight: '45px' }}
                                  />
+                                 <button
+                                    type="button"
+                                    onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#999',
+                                        opacity: formErrors.password ? 0.7 : 1
+                                    }}
+                                    aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                                 >
+                                    {showRegisterPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                 </button>
                                  {formErrors.password && <div className="error-message">{formErrors.password}</div>}
                              </div>
                              <button 

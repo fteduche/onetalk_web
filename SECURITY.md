@@ -77,7 +77,7 @@ You need to configure the following environment variables on your hosting platfo
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `996418805484` | Firebase Messaging Sender ID |
 | `VITE_FIREBASE_APP_ID` | `1:996418805484:web:7fe1de306e67979b794fc9` | Firebase App ID |
 | `VITE_ADMIN_EMAIL` | `fteduche@gmail.com` | Admin login email |
-| `VITE_ADMIN_PASSWORD` | `fredrick001` | Admin login password |
+| `VITE_ADMIN_PASSWORD` | `Fredrick001` | Admin login password |
 
 ---
 
@@ -173,7 +173,7 @@ You need to configure the following environment variables on your hosting platfo
      - Name: `VITE_FIREBASE_MESSAGING_SENDER_ID` | Value: `996418805484`
      - Name: `VITE_FIREBASE_APP_ID` | Value: `1:996418805484:web:7fe1de306e67979b794fc9`
      - Name: `VITE_ADMIN_EMAIL` | Value: `fteduche@gmail.com`
-     - Name: `VITE_ADMIN_PASSWORD` | Value: `fredrick001`
+     - Name: `VITE_ADMIN_PASSWORD` | Value: `Fredrick001`
    - Select environment: **Production** (check the box)
 
 5. **Deploy**
@@ -246,7 +246,7 @@ VITE_FIREBASE_STORAGE_BUCKET=onetalk-c7121.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=996418805484
 VITE_FIREBASE_APP_ID=1:996418805484:web:7fe1de306e67979b794fc9
 VITE_ADMIN_EMAIL=fteduche@gmail.com
-VITE_ADMIN_PASSWORD=fredrick001
+VITE_ADMIN_PASSWORD=Fredrick001
 ```
 
 ---
