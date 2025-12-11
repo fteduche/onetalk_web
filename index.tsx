@@ -814,10 +814,10 @@ const HomeView = ({
             <section className="section">
                 <div className="grid-4">
                     <div className="stat-card">
-                        <div className="stat-number">500M+</div><div className="stat-label">Projected Reach</div>
+                        <div className="stat-number">1.2B+</div><div className="stat-label">Projected Reach</div>
                     </div>
                     <div className="stat-card">
-                        <div className="stat-number">1.5B</div><div className="stat-label">Smartphone Users in Target Markets</div>
+                        <div className="stat-number">2B</div><div className="stat-label">Smartphone Users in Target Markets</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-number">10x</div><div className="stat-label">Voices to Connect Across Continent & Diaspora</div>
