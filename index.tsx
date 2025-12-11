@@ -8,19 +8,20 @@ import { ASSETS } from "./assets";
 import AdminDashboard from "./AdminDashboard";
 
 // --- Firebase Configuration ---
-// Load Firebase config from environment variables for security
+// IMPORTANT: All credentials MUST be set via environment variables in production
+// Set these in your .env file locally and in Render dashboard for production
 const firebaseConfig = {
-  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyCpUOnfvYGWD-kP_MgUU5VcjGD5ZwhPUr8",
-  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "onetalk-c7121.firebaseapp.com",
-  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "onetalk-c7121",
-  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "onetalk-c7121.firebasestorage.app",
-  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "996418805484",
-  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:996418805484:web:7fe1de306e67979b794fc9"
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID
 };
 
-// Admin credentials from environment variables
-const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "fteduche@gmail.com";
-const ADMIN_PASSWORD = (import.meta as any).env?.VITE_ADMIN_PASSWORD || "fredrick001";
+// Admin credentials from environment variables (REQUIRED)
+const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL;
+const ADMIN_PASSWORD = (import.meta as any).env?.VITE_ADMIN_PASSWORD;
 
 // Initialize Firebase safely
 let db = null;
