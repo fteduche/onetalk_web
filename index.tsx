@@ -1,14 +1,10 @@
-
-import React, { useState, useEffect, useRef } from "react";
-import { createRoot } from "react-dom/client";
-import { initializeApp } from "firebase/app";
+import React, { useEffect, useState } from "react";
+import { createRoot } from 'react-dom/client';
+import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "firebase/auth";
 import { ASSETS } from "./assets";
 import AdminDashboard from "./AdminDashboard";
-
-// --- Firebase Configuration ---
-// IMPORTANT: All credentials MUST be set via environment variables in production
 // Set these in your .env file locally and in Render dashboard for production
 const firebaseConfig = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
@@ -18,8 +14,6 @@ const firebaseConfig = {
   messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID
 };
-
-// Admin credentials from environment variables (REQUIRED)
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL;
 const ADMIN_PASSWORD = (import.meta as any).env?.VITE_ADMIN_PASSWORD;
 
@@ -937,7 +931,7 @@ const TermsOfService = () => (
     </div>
 );
 
-const ThankYouPage = ({ userName, onNavigateHome }: { userName: string; onNavigateHome: () => void }) => (
+const ThankYouPage = ({ userName, onNavigateHome, verificationSent, verificationError, onResend, verificationSending }: { userName: string; onNavigateHome: () => void; verificationSent?: boolean; verificationError?: string | null; onResend?: () => Promise<void>; verificationSending?: boolean }) => (
     <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -994,8 +988,8 @@ const ThankYouPage = ({ userName, onNavigateHome }: { userName: string; onNaviga
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#111' }}>What's Next?</h3>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     <li style={{ padding: '8px 0', color: '#555', display: 'flex', alignItems: 'start' }}>
-                        <span style={{ marginRight: '8px' }}>✉️</span>
-                        <span>Check your email for a confirmation message</span>
+                      <span style={{ marginRight: '8px' }}>✉️</span>
+                      <span>{verificationSent ? "We've sent a verification email — please check your inbox (and spam) to verify your email." : 'Check your email for a confirmation message'}</span>
                     </li>
                     <li style={{ padding: '8px 0', color: '#555', display: 'flex', alignItems: 'start' }}>
                         <span style={{ marginRight: '8px' }}>🔔</span>
@@ -1020,10 +1014,18 @@ const ThankYouPage = ({ userName, onNavigateHome }: { userName: string; onNaviga
                     cursor: 'pointer',
                     transition: 'transform 0.2s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
                 Return to Home
+                {verificationError && (
+                  <div style={{ background: '#fff3f3', border: '1px solid #f5c2c7', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                    <strong style={{ color: '#b91c1c' }}>Error:</strong>
+                    <div style={{ marginTop: '8px', color: '#7f1d1d' }}>{verificationError}</div>
+                    <div style={{ marginTop: '12px' }}>
+                      <button onClick={() => onResend && onResend()} disabled={verificationSending} style={{ background: verificationSending ? '#666' : '#111', color: '#fff', padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: verificationSending ? 'default' : 'pointer' }}>{verificationSending ? 'Sending…' : 'Resend verification email'}</button>
+                    </div>
+                  </div>
+                )}
             </button>
         </div>
     </div>
@@ -1056,6 +1058,12 @@ function OnetalkApp() {
     // Password visibility state
     const [showRegisterPassword, setShowRegisterPassword] = useState(false);
     const [showAdminPassword, setShowAdminPassword] = useState(false);
+    // Verification state
+    const [verificationSent, setVerificationSent] = useState(false);
+    const [lastRegisteredName, setLastRegisteredName] = useState("");
+    const [lastRegisteredEmail, setLastRegisteredEmail] = useState("");
+    const [verificationError, setVerificationError] = useState<string | null>(null);
+    const [verificationSending, setVerificationSending] = useState(false);
     
     // Loading States
     const [videoLoaded, setVideoLoaded] = useState(false);
@@ -1064,6 +1072,20 @@ function OnetalkApp() {
     useEffect(() => {
         const timer = setInterval(() => setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length), 5000);
         return () => clearInterval(timer);
+    }, []);
+
+    // Load persisted verification state and last registered info
+    useEffect(() => {
+      try {
+        const e = localStorage.getItem('lastRegisteredEmail');
+        const n = localStorage.getItem('lastRegisteredName');
+        const vs = localStorage.getItem('verificationSent');
+        if (e) setLastRegisteredEmail(e);
+        if (n) setLastRegisteredName(n);
+        if (vs === '1') setVerificationSent(true);
+      } catch (err) {
+        // ignore
+      }
     }, []);
 
     // Check authentication state
@@ -1223,8 +1245,61 @@ function OnetalkApp() {
 
             // Update user profile with full name
             await updateProfile(userCredential.user, {
-                displayName: sanitizedName
+              displayName: sanitizedName
             });
+
+            // Send email verification via server function (preferred) or fallback to Firebase
+            const verificationEndpoint = (import.meta as any).env.VITE_SEND_VERIFICATION_URL as string | undefined;
+            // Save last registered email/name for resend UI and persist
+            setLastRegisteredEmail(sanitizedEmail);
+            setLastRegisteredName(sanitizedName.split(' ')[0] || "");
+            try { localStorage.setItem('lastRegisteredEmail', sanitizedEmail); localStorage.setItem('lastRegisteredName', sanitizedName.split(' ')[0] || ''); } catch {}
+
+            const sendVerificationWithRetry = async (attempts = 3) => {
+              setVerificationError(null);
+              setVerificationSending(true);
+              const functionSecret = (import.meta as any).env.VITE_FUNCTION_SECRET as string | undefined;
+              const headersBase: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (functionSecret) headersBase['x-function-secret'] = functionSecret;
+
+              for (let i = 0; i < attempts; i++) {
+                try {
+                  if (verificationEndpoint) {
+                    const resp = await fetch(verificationEndpoint, {
+                      method: 'POST',
+                      headers: headersBase,
+                      body: JSON.stringify({ email: sanitizedEmail, displayName: sanitizedName, continueUrl: window.location.origin })
+                    });
+                    if (resp.ok) {
+                      setVerificationSent(true);
+                      try { localStorage.setItem('verificationSent', '1'); } catch {}
+                      setVerificationSending(false);
+                      return true;
+                    }
+                    const text = await resp.text();
+                    console.warn('Verification endpoint returned error', text);
+                  }
+                  // fallback to Firebase client send
+                  try { await sendEmailVerification(userCredential.user); setVerificationSent(true); try { localStorage.setItem('verificationSent', '1'); } catch {} setVerificationSending(false); return true; } catch (e) { console.warn('Firebase fallback failed', e); }
+                } catch (err) {
+                  console.warn('Verification attempt failed', err);
+                }
+                // Exponential backoff
+                const backoff = Math.pow(2, i) * 500; // 500ms, 1000ms, 2000ms
+                await new Promise(r => setTimeout(r, backoff));
+              }
+              setVerificationError('Failed to send verification email. You can try resending.');
+              setVerificationSending(false);
+              try { localStorage.removeItem('verificationSent'); } catch {}
+              return false;
+            };
+
+            try {
+              await sendVerificationWithRetry(3);
+            } catch (ev) {
+              console.warn('Verification process failed', ev);
+              setVerificationSending(false);
+            }
 
             // Also save to waitlist collection for admin tracking
             if (db) {
@@ -1240,6 +1315,9 @@ function OnetalkApp() {
             
             // Reset rate limiting on success
             setRegistrationAttempts(0);
+
+            // Preserve name for thank you page
+            setLastRegisteredName(sanitizedName.split(' ')[0] || "");
 
             setIsRegistering(false);
             setRegisterForm({ fullName: "", email: "", password: "" });
@@ -1374,7 +1452,35 @@ function OnetalkApp() {
             {view === 'terms' && <TermsOfService />}
             {view === 'thankyou' && (
                 <ThankYouPage 
-                    userName={registerForm.fullName.split(' ')[0]} 
+                    userName={(lastRegisteredName || registerForm.fullName.split(' ')[0])} 
+                    verificationSent={verificationSent}
+                    verificationError={verificationError}
+                    verificationSending={verificationSending}
+                    onResend={async () => {
+                      if (!lastRegisteredEmail) return;
+                      setVerificationError(null);
+                      setVerificationSending(true);
+                      const verificationEndpoint = (import.meta as any).env.VITE_SEND_VERIFICATION_URL as string | undefined;
+                      const functionSecret = (import.meta as any).env.VITE_FUNCTION_SECRET as string | undefined;
+                      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+                      if (functionSecret) headers['x-function-secret'] = functionSecret;
+
+                      try {
+                        if (verificationEndpoint) {
+                          const resp = await fetch(verificationEndpoint, { method: 'POST', headers, body: JSON.stringify({ email: lastRegisteredEmail, displayName: lastRegisteredName, continueUrl: window.location.origin }) });
+                          if (resp.ok) { setVerificationSent(true); setVerificationError(null); try { localStorage.setItem('verificationSent','1'); } catch {} setVerificationSending(false); return; }
+                        }
+                        // fallback
+                        const auth = getAuth();
+                        const user = auth.currentUser;
+                        if (user) { await sendEmailVerification(user); setVerificationSent(true); setVerificationError(null); try { localStorage.setItem('verificationSent','1'); } catch {} }
+                        setVerificationSending(false);
+                      } catch (e) {
+                        console.warn('Resend failed', e);
+                        setVerificationError('Resend failed — please try again later.');
+                        setVerificationSending(false);
+                      }
+                    }}
                     onNavigateHome={() => navigate('home')} 
                 />
             )}

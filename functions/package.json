@@ -1,0 +1,15 @@
+{
+  "name": "send-verification-function",
+  "version": "1.0.0",
+  "description": "Cloud Function to generate Firebase email verification links and send via SendGrid",
+  "main": "index.js",
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.0",
+    "firebase-functions": "^4.4.0",
+    "@sendgrid/mail": "^7.9.0",
+    "cors": "^2.8.5"
+  }
+}
